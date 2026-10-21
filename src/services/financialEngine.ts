@@ -1,0 +1,517 @@
+import {
+  Account,
+  Budget,
+  Category,
+  DebtReceivable,
+  FilterOptions,
+  FinancialSummary,
+  OfficeFund,
+  OfficeFundSettlementSummary,
+  Transaction,
+  TransactionType,
+} from '../types/finance';
+
+// Currency formatting utility for Bangladeshi Taka (BDT)
+export const formatCurrency = (amount: number, symbol = '৳'): string => {
+  const displaySymbol = symbol || '৳';
+  if (isNaN(amount) || amount === null || amount === undefined || amount === 0) {
+    return `${displaySymbol} 0`;
+  }
+  const isNegative = amount < 0;
+  const absAmount = Math.abs(amount);
+  const hasDecimals = absAmount % 1 !== 0;
+  const formatted = absAmount.toLocaleString('en-US', {
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  });
+  return `${isNegative ? '-' : ''}${displaySymbol} ${formatted}`;
+};
+
+// Pure number formatting utility for tables without currency symbol prefix
+export const formatNumberOnly = (amount: number): string => {
+  if (isNaN(amount) || amount === null || amount === undefined || amount === 0) {
+    return '0';
+  }
+  const isNegative = amount < 0;
+  const absAmount = Math.abs(amount);
+  const hasDecimals = absAmount % 1 !== 0;
+  const formatted = absAmount.toLocaleString('en-US', {
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  });
+  return `${isNegative ? '-' : ''}${formatted}`;
+};
+
+export const formatDate = (dateString: string): string => {
+  if (!dateString) return '';
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch (e) {
+    return dateString;
+  }
+};
+
+/**
+ * Calculates sequential serial voucher number V.NO-0001, V.NO-0002, etc. based on chronological transaction order
+ */
+export const getVoucherNumber = (tx: Transaction, allTransactions: Transaction[] = []): string => {
+  if (!tx) return 'V.NO-0001';
+
+  if (allTransactions && allTransactions.length > 0) {
+    const sorted = [...allTransactions].sort((a, b) => {
+      const dateCmp = (a.date || '').localeCompare(b.date || '');
+      if (dateCmp !== 0) return dateCmp;
+      const createdCmp = (a.createdAt || '').localeCompare(b.createdAt || '');
+      if (createdCmp !== 0) return createdCmp;
+      return (a.id || '').localeCompare(b.id || '');
+    });
+
+    const index = sorted.findIndex((t) => t.id === tx.id);
+    if (index >= 0) {
+      const serialNum = index + 1;
+      return `V.NO-${String(serialNum).padStart(4, '0')}`;
+    }
+  }
+
+  const digits = (tx.referenceNumber || tx.id || '').replace(/\D/g, '');
+  const num = digits ? parseInt(digits.slice(-4), 10) || 1 : 1;
+  return `V.NO-${String(num).padStart(4, '0')}`;
+};
+
+export const isUnpassBillAccount = (accountId?: string, accounts: Account[] = []): boolean => {
+  if (!accountId) return false;
+  if (accountId === 'acc_unpass_1' || accountId.toLowerCase().includes('unpass')) return true;
+  const acc = accounts.find((a) => a.id === accountId);
+  if (!acc) return false;
+  return acc.type === 'unpass_bill' || acc.name.toLowerCase().includes('unpass');
+};
+
+export const isUnpassBillTx = (tx: Transaction, accounts: Account[] = []): boolean => {
+  if (!tx) return false;
+  if (tx.isUnpassBill === true) return true;
+  if (tx.sourceAccountId === 'acc_unpass_1' || tx.destinationAccountId === 'acc_unpass_1') return true;
+  if (tx.sourceAccountId?.toLowerCase().includes('unpass') || tx.destinationAccountId?.toLowerCase().includes('unpass')) return true;
+  if ((tx.type as string) === 'unpass_bill' || (tx.type as string)?.toLowerCase().includes('unpass')) return true;
+  if (tx.description && tx.description.toLowerCase().includes('unpass')) return true;
+  if (tx.tags && tx.tags.some((t) => t.toLowerCase().includes('unpass'))) return true;
+  return isUnpassBillAccount(tx.sourceAccountId, accounts) || isUnpassBillAccount(tx.destinationAccountId, accounts);
+};
+
+/**
+ * Filter transactions based on date, account, category, ownership, search query, etc.
+ */
+export const filterTransactions = (
+  transactions: Transaction[],
+  filters: FilterOptions
+): Transaction[] => {
+  return transactions.filter((tx) => {
+    // Exclude reversed transactions
+    if (tx.status === 'reversed') return false;
+
+    // By default, exclude unapproved transactions from financial calculations unless explicitly requested or UNPASS BIL
+    if (!filters.includeUnapproved && !tx.isApproved) {
+      if (!isUnpassBillTx(tx, filters.accounts || [])) {
+        return false;
+      }
+    }
+
+    // Date filtering
+    if (filters.startDate && tx.date < filters.startDate) return false;
+    if (filters.endDate && tx.date > filters.endDate) return false;
+    if (filters.month && !tx.date.startsWith(filters.month)) return false;
+    if (filters.year && !tx.date.startsWith(filters.year)) return false;
+
+    // Transaction Type
+    if (filters.transactionType && filters.transactionType !== 'all') {
+      if (tx.type !== filters.transactionType) return false;
+    }
+
+    // Ownership
+    if (filters.ownership && filters.ownership !== 'all') {
+      if (tx.ownership !== filters.ownership) return false;
+    }
+
+    // Category
+    if (filters.categoryId && filters.categoryId !== 'all') {
+      if (tx.categoryId !== filters.categoryId) return false;
+    }
+
+    // Subcategory
+    if (filters.subcategoryId && filters.subcategoryId !== 'all') {
+      if (tx.subcategoryId !== filters.subcategoryId) return false;
+    }
+
+    // Account
+    if (filters.accountId && filters.accountId !== 'all') {
+      if (tx.sourceAccountId !== filters.accountId && tx.destinationAccountId !== filters.accountId) {
+        return false;
+      }
+    }
+
+    // Related Office Fund
+    if (filters.relatedOfficeFundId && filters.relatedOfficeFundId !== 'all') {
+      if (tx.relatedOfficeFundId !== filters.relatedOfficeFundId) return false;
+    }
+
+    // Family Member
+    if (filters.familyMember && filters.familyMember !== 'all') {
+      if (tx.familyMember !== filters.familyMember) return false;
+    }
+
+    // Amount Range
+    if (filters.minAmount !== undefined && tx.amount < filters.minAmount) return false;
+    if (filters.maxAmount !== undefined && tx.amount > filters.maxAmount) return false;
+
+    // Search Query (Supports Description, Payee, Ref#, Tags, and Voucher Numbers like V.NO-0001)
+    if (filters.searchQuery && filters.searchQuery.trim() !== '') {
+      const q = filters.searchQuery.toLowerCase().trim();
+      const matchDesc = (tx.description || '').toLowerCase().includes(q);
+      const matchPayee = (tx.payeePayer || '').toLowerCase().includes(q);
+      const matchRef = (tx.referenceNumber || '').toLowerCase().includes(q);
+      const matchTag = tx.tags ? tx.tags.some((t) => t.toLowerCase().includes(q)) : false;
+
+      // Calculate voucher number for this transaction (e.g., V.NO-0001)
+      const vNum = getVoucherNumber(tx, transactions).toLowerCase();
+      const vNumClean = vNum.replace(/[^a-z0-9]/g, '');
+      const qClean = q.replace(/[^a-z0-9]/g, '');
+
+      const matchVoucherDirect = vNum.includes(q);
+      const matchVoucherClean = qClean.length > 0 && vNumClean.includes(qClean);
+
+      if (!matchDesc && !matchPayee && !matchRef && !matchTag && !matchVoucherDirect && !matchVoucherClean) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+};
+
+/**
+ * Calculates current real balance for each account based on opening balances + active transaction ledger
+ */
+export const calculateAccountBalances = (
+  accounts: Account[],
+  transactions: Transaction[]
+): Account[] => {
+  const balanceMap = new Map<string, number>();
+
+  // Set opening balances
+  accounts.forEach((acc) => {
+    balanceMap.set(acc.id, acc.openingBalance || 0);
+  });
+
+  // Approved transactions OR UNPASS BIL transactions hit live account balance immediately!
+  const activeTxs = transactions.filter(
+    (t) => t.status === 'completed' && (t.isApproved === true || isUnpassBillTx(t, accounts))
+  );
+
+  // Process in chronological order
+  activeTxs.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+  activeTxs.forEach((tx) => {
+    const amount = Number(tx.amount) || 0;
+    const fee = Number(tx.fee) || 0;
+    const typeStr = (tx.type || '').toLowerCase();
+
+    // Determine transaction category
+    const isIncome =
+      typeStr.includes('income') ||
+      typeStr.includes('received') ||
+      typeStr.includes('collection') ||
+      typeStr.includes('refund') ||
+      typeStr.includes('reimbursement');
+
+    const isTransfer =
+      typeStr === 'account_transfer' ||
+      typeStr === 'money_transfer' ||
+      typeStr === 'savings_contribution' ||
+      typeStr === 'savings' ||
+      typeStr === 'investment' ||
+      typeStr === 'savings_withdrawal';
+
+    const isAdjustment = typeStr === 'opening_balance_adjustment';
+
+    if (isAdjustment) {
+      // Set or adjust balance directly
+      balanceMap.set(tx.sourceAccountId, amount);
+    } else if (isTransfer) {
+      // Decrease source account
+      const srcCurrent = balanceMap.get(tx.sourceAccountId) || 0;
+      balanceMap.set(tx.sourceAccountId, srcCurrent - amount - fee);
+
+      // Increase destination account if specified
+      if (tx.destinationAccountId) {
+        const destCurrent = balanceMap.get(tx.destinationAccountId) || 0;
+        balanceMap.set(tx.destinationAccountId, destCurrent + amount);
+      }
+    } else if (isIncome) {
+      // Income increases source account
+      const current = balanceMap.get(tx.sourceAccountId) || 0;
+      balanceMap.set(tx.sourceAccountId, current + amount - fee);
+    } else {
+      // Expenses (personal, family, baby, mobile, office, unpass_bill, etc.) decrease source account
+      const current = balanceMap.get(tx.sourceAccountId) || 0;
+      balanceMap.set(tx.sourceAccountId, current - amount - fee);
+    }
+  });
+
+  return accounts.map((acc) => ({
+    ...acc,
+    currentBalance: balanceMap.get(acc.id) ?? acc.openingBalance,
+  }));
+};
+
+/**
+ * Calculates the complete financial overview summary
+ */
+export const calculateFinancialSummary = (
+  transactions: Transaction[],
+  accounts: Account[],
+  officeFunds: OfficeFund[],
+  debts: DebtReceivable[],
+  filters: FilterOptions = {}
+): FinancialSummary => {
+  const effectiveFilters = {
+    ...filters,
+    accounts: filters.accounts || accounts,
+  };
+  const filteredTxs = filterTransactions(transactions, effectiveFilters);
+
+  let totalSalaryIncome = 0;
+  let totalAdditionalIncome = 0;
+  let totalOtherPersonalIncome = 0;
+  let totalOfficeFundsReceived = 0;
+
+  let totalOfficeExpenses = 0;
+  let totalPersonalExpenses = 0;
+  let totalFamilyExpenses = 0;
+  let totalOtherExpenses = 0;
+  let totalPersonalExpensesViaOffice = 0;
+
+  let totalSavingsContributions = 0;
+  let totalDebtRepayments = 0;
+  let totalReceivablesCollected = 0;
+
+  filteredTxs.forEach((tx) => {
+    const typeStr = (tx.type || '').toLowerCase();
+    const amt = Number(tx.amount) || 0;
+
+    if (typeStr === 'salary_income') {
+      totalSalaryIncome += amt;
+    } else if (typeStr === 'additional_income') {
+      totalAdditionalIncome += amt;
+    } else if (typeStr.includes('income') || typeStr === 'receivable_collection' || typeStr === 'money_received') {
+      totalOtherPersonalIncome += amt;
+    } else if (typeStr === 'office_fund_received' || typeStr === 'office_money_received') {
+      totalOfficeFundsReceived += amt;
+    } else if (typeStr === 'office_expense') {
+      totalOfficeExpenses += amt;
+    } else if (typeStr === 'family_expense' || typeStr === 'baby_expense') {
+      totalFamilyExpenses += amt;
+    } else if (typeStr === 'personal_expense_via_office') {
+      totalPersonalExpensesViaOffice += amt;
+      totalPersonalExpenses += amt;
+    } else if (typeStr === 'savings_contribution' || typeStr === 'savings' || typeStr === 'investment') {
+      totalSavingsContributions += amt;
+    } else if (typeStr === 'debt_repayment' || typeStr === 'loan_repayment') {
+      totalDebtRepayments += amt;
+    } else if (typeStr === 'receivable_collection' || typeStr === 'money_received') {
+      totalReceivablesCollected += amt;
+    } else if (
+      typeStr.includes('expense') ||
+      typeStr === 'unpass_bill' ||
+      typeStr === 'loan_issued' ||
+      typeStr === 'loan_given' ||
+      typeStr === 'money_given'
+    ) {
+      totalPersonalExpenses += amt;
+    } else {
+      totalOtherExpenses += amt;
+    }
+  });
+
+  const totalPersonalIncome = totalSalaryIncome + totalAdditionalIncome + totalOtherPersonalIncome;
+
+  // Net personal cash flow = Personal Income - Personal Expenses - Family Expenses
+  const netPersonalCashFlow = totalPersonalIncome - totalPersonalExpenses - totalFamilyExpenses;
+
+  // Total cash & bank balances
+  const calculatedAccounts = calculateAccountBalances(accounts, transactions);
+  const totalCashAndBankBalances = calculatedAccounts
+    .filter((a) => a.status === 'active')
+    .reduce((sum, a) => sum + a.currentBalance, 0);
+
+  // Outstanding liabilities and receivables
+  const totalLiabilitiesOutstanding = debts
+    .filter((d) => (d.type === 'loan_taken' || d.type === 'debt_owed') && d.status !== 'settled')
+    .reduce((sum, d) => sum + d.currentBalance, 0);
+
+  const totalReceivablesOutstanding = debts
+    .filter((d) => (d.type === 'loan_given' || d.type === 'receivable_owed') && d.status !== 'settled')
+    .reduce((sum, d) => sum + d.currentBalance, 0);
+
+  // Office funds unspent calculation
+  const officeSettlements = officeFunds.map((fund) =>
+    calculateOfficeFundSettlement(fund.id, officeFunds, transactions)
+  );
+
+  const totalOfficeFundsUnspent = officeSettlements.reduce(
+    (sum, s) => sum + Math.max(0, s.unspentOfficeFundRemaining),
+    0
+  );
+
+  const reimbursementsDueFromEmployer = officeSettlements.reduce(
+    (sum, s) => sum + s.reimbursementDueToUser,
+    0
+  );
+
+  return {
+    openingBalance: accounts.reduce((sum, a) => sum + a.openingBalance, 0),
+    totalPersonalIncome,
+    totalSalaryIncome,
+    totalAdditionalIncome,
+    totalOfficeFundsReceived,
+    totalOfficeExpenses,
+    totalPersonalExpenses,
+    totalFamilyExpenses,
+    totalOtherExpenses,
+    totalPersonalExpensesViaOffice,
+    totalSavingsContributions,
+    totalDebtRepayments,
+    totalReceivablesCollected,
+    totalLiabilitiesOutstanding,
+    totalReceivablesOutstanding,
+    totalCashAndBankBalances,
+    netPersonalCashFlow,
+    totalOfficeFundsUnspent,
+    reimbursementsDueFromEmployer,
+  };
+};
+
+/**
+ * Calculates accurate settlement position for an Office Fund / Advance
+ */
+export const calculateOfficeFundSettlement = (
+  fundId: string,
+  officeFunds: OfficeFund[],
+  transactions: Transaction[]
+): OfficeFundSettlementSummary => {
+  const fund = officeFunds.find((f) => f.id === fundId);
+  if (!fund) {
+    return {
+      fundId,
+      fundTitle: 'Unknown Fund',
+      dateReceived: '',
+      totalReceived: 0,
+      officialExpenses: 0,
+      personalUse: 0,
+      returnedAmount: 0,
+      reimbursementDueToUser: 0,
+      unspentOfficeFundRemaining: 0,
+      settlementStatus: 'open',
+    };
+  }
+
+  // Find all active transactions linked to this office fund ID
+  const fundTxs = transactions.filter(
+    (t) => t.relatedOfficeFundId === fundId && t.status === 'completed'
+  );
+
+  let officialExpenses = 0;
+  let personalUse = 0;
+  let returnedAmount = 0;
+
+  fundTxs.forEach((tx) => {
+    if (tx.type === 'office_expense') {
+      officialExpenses += tx.amount;
+    } else if (tx.type === 'personal_expense_via_office') {
+      personalUse += tx.amount;
+    } else if (tx.type === 'office_fund_returned') {
+      returnedAmount += tx.amount;
+    }
+  });
+
+  const totalReceived = fund.amountReceived;
+  const totalAccountedFor = officialExpenses + personalUse + returnedAmount;
+
+  let unspentOfficeFundRemaining = totalReceived - totalAccountedFor;
+  let reimbursementDueToUser = 0;
+
+  if (unspentOfficeFundRemaining < 0) {
+    // User spent more than the advance using personal money! Employer owes reimbursement.
+    reimbursementDueToUser = Math.abs(unspentOfficeFundRemaining);
+    unspentOfficeFundRemaining = 0;
+  }
+
+  let settlementStatus: OfficeFund['status'] = fund.status;
+  if (unspentOfficeFundRemaining === 0 && totalAccountedFor > 0) {
+    settlementStatus = 'fully_settled';
+  } else if (totalAccountedFor > 0) {
+    settlementStatus = 'partially_settled';
+  }
+
+  return {
+    fundId: fund.id,
+    fundTitle: fund.title,
+    dateReceived: fund.dateReceived,
+    totalReceived,
+    officialExpenses,
+    personalUse,
+    returnedAmount,
+    reimbursementDueToUser,
+    unspentOfficeFundRemaining,
+    settlementStatus,
+  };
+};
+
+/**
+ * Calculates budget utilization for a specific month
+ */
+export const calculateBudgetUtilization = (
+  budgets: Budget[],
+  transactions: Transaction[],
+  categories: Category[],
+  month: string
+) => {
+  const monthTxs = transactions.filter(
+    (t) =>
+      t.status === 'completed' &&
+      t.date.startsWith(month) &&
+      (t.type === 'personal_expense' ||
+        t.type === 'family_expense' ||
+        t.type === 'personal_expense_via_office')
+  );
+
+  return budgets
+    .filter((b) => b.month === month)
+    .map((b) => {
+      const category = categories.find((c) => c.id === b.categoryId);
+      const categoryTxs = monthTxs.filter((t) => {
+        if (t.categoryId !== b.categoryId) return false;
+        if (b.subcategoryId && t.subcategoryId !== b.subcategoryId) return false;
+        if (b.ownership !== 'overall' && t.ownership !== b.ownership) return false;
+        return true;
+      });
+
+      const actualSpent = categoryTxs.reduce((sum, t) => sum + t.amount, 0);
+      const remaining = b.budgetAmount - actualSpent;
+      const percentageUsed = b.budgetAmount > 0 ? (actualSpent / b.budgetAmount) * 100 : 0;
+      const isOverBudget = actualSpent > b.budgetAmount;
+
+      return {
+        budget: b,
+        categoryName: category?.name || 'Uncategorized',
+        actualSpent,
+        remaining,
+        percentageUsed,
+        isOverBudget,
+      };
+    });
+};
