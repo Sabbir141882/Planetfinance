@@ -344,45 +344,87 @@
     size: A4 portrait;
     margin: 0;
   }
+
   html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app sidebar, headers, and main content when printing */
+  body > * {
+    display: none !important;
+  }
+
+  #root {
+    display: block !important;
     width: 100% !important;
     height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    background: #ffffff !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
   }
-  body * {
-    visibility: hidden !important;
+
+  #root > div {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
-  /* Remove modal dialog restrictions during print */
-  .fixed, .overflow-y-auto, .max-w-3xl, .max-w-2xl, .max-w-xl, .backdrop-blur-xs {
+
+  /* Hide non-modal siblings */
+  #root > div > *:not(.fixed) {
+    display: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset modal containers so they don't clip or add extra pages */
+  .fixed {
+    display: block !important;
     position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
     overflow: visible !important;
+  }
+
+  .fixed > div {
+    display: block !important;
+    position: static !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
     max-width: none !important;
     max-height: none !important;
     padding: 0 !important;
     margin: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
+    overflow: visible !important;
   }
-  #printable-voucher, #printable-voucher * {
-    visibility: visible !important;
-  }
+
+  /* Target the printable voucher element directly */
   #printable-voucher {
+    display: flex !important;
     position: absolute !important;
     left: 8mm !important;
     top: 8mm !important;
-    right: 8mm !important;
-    width: calc(100% - 16mm) !important;
-    max-width: calc(100% - 16mm) !important;
-    height: 138mm !important;
-    min-height: 138mm !important;
+    width: 194mm !important;
+    max-width: 194mm !important;
+    height: 135mm !important;
+    max-height: 135mm !important;
     box-sizing: border-box !important;
     margin: 0 !important;
-    padding: 18px 24px !important;
+    padding: 18px 22px !important;
     background: #ffffff !important;
     color: #000000 !important;
     border: 2.5px solid #000000 !important;
@@ -390,9 +432,6 @@
     overflow: hidden !important;
     page-break-after: avoid !important;
     page-break-inside: avoid !important;
-  }
-  .no-print {
-    display: none !important;
   }
 }
 
