@@ -345,13 +345,22 @@
     margin: 0;
   }
 
-  html, body {
+  /* Force pure white background on page and all root containers */
+  html,
+  body,
+  #root,
+  #root > div,
+  .fixed,
+  .fixed > div,
+  .fixed > div > div {
     background: #ffffff !important;
+    background-color: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     height: 100% !important;
+    box-shadow: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -363,18 +372,10 @@
 
   #root {
     display: block !important;
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
   }
 
   #root > div {
     display: block !important;
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
   }
 
   /* Hide non-modal siblings */
@@ -386,12 +387,12 @@
     display: none !important;
   }
 
-  /* Reset modal containers so they don't clip or add extra pages */
+  /* Reset modal containers so they don't clip, add dark backdrops, or extra pages */
   .fixed {
     display: block !important;
     position: static !important;
     inset: auto !important;
-    background: transparent !important;
+    background: #ffffff !important;
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
@@ -402,7 +403,7 @@
   .fixed > div {
     display: block !important;
     position: static !important;
-    background: transparent !important;
+    background: #ffffff !important;
     border: none !important;
     box-shadow: none !important;
     max-width: none !important;
@@ -433,5 +434,22 @@
     page-break-after: avoid !important;
     page-break-inside: avoid !important;
   }
+
+  /* Retain voucher internal black header blocks */
+  #printable-voucher .bg-slate-900 {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+  }
+
+  #printable-voucher .bg-slate-900 * {
+    color: #ffffff !important;
+  }
+
+  #printable-voucher .bg-slate-50\/80,
+  #printable-voucher .bg-slate-100 {
+    background-color: #f1f5f9 !important;
+    color: #000000 !important;
+  }
 }
+
 
