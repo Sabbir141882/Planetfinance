@@ -279,102 +279,102 @@ export const VoucherModal: React.FC<VoucherModalProps> = ({
               </div>
 
               {/* 2. EXECUTIVE LEDGER METADATA GRID */}
-              <div className="my-2.5 border border-slate-300 rounded bg-slate-50/60 p-2 text-[10px] grid grid-cols-2 gap-x-4 gap-y-1.5">
-                <div className="flex justify-between items-baseline border-b border-slate-200 pb-1">
-                  <span className="font-bold text-slate-600 uppercase text-[9px]">
+              <div className="my-3 border-2 border-slate-900 rounded bg-slate-50/80 p-2.5 text-[10.5px] grid grid-cols-2 gap-x-6 gap-y-2">
+                <div className="flex justify-between items-baseline border-b border-slate-300 pb-1">
+                  <span className="font-extrabold text-slate-900 uppercase text-[9px]">
                     Person / Org (ব্যক্তি/প্রতিষ্ঠান):
                   </span>
-                  <span className="font-bold text-slate-950 text-[10.5px]">
+                  <span className="font-extrabold text-slate-950 text-[11px]">
                     {voucher.personOrOrganization}
                   </span>
                 </div>
 
-                <div className="flex justify-between items-baseline border-b border-slate-200 pb-1">
-                  <span className="font-bold text-slate-600 uppercase text-[9px]">
+                <div className="flex justify-between items-baseline border-b border-slate-300 pb-1">
+                  <span className="font-extrabold text-slate-900 uppercase text-[9px]">
                     Category (ক্যাটাগরি):
                   </span>
-                  <span className="font-bold text-slate-950 text-[10.5px]">
+                  <span className="font-extrabold text-slate-950 text-[11px]">
                     {voucher.categoryName}
                     {voucher.subcategoryName && (
-                      <span className="font-normal text-slate-600 text-[9px] ml-1">
+                      <span className="font-normal text-slate-700 text-[9.5px] ml-1">
                         ({voucher.subcategoryName})
                       </span>
                     )}
                   </span>
                 </div>
 
-                <div className="flex justify-between items-baseline border-b border-slate-200 pb-1 sm:border-b-0 sm:pb-0">
-                  <span className="font-bold text-slate-600 uppercase text-[9px]">
+                <div className="flex justify-between items-baseline border-b border-slate-300 pb-1 sm:border-b-0 sm:pb-0">
+                  <span className="font-extrabold text-slate-900 uppercase text-[9px]">
                     Payment Account (মাধ্যম):
                   </span>
-                  <span className="font-bold text-slate-950 text-[10.5px]">
+                  <span className="font-extrabold text-slate-950 text-[11px]">
                     {voucher.accountName}
                     {voucher.destinationAccountName && (
-                      <span className="font-normal text-slate-600 text-[9px]"> → {voucher.destinationAccountName}</span>
+                      <span className="font-normal text-slate-700 text-[9.5px]"> → {voucher.destinationAccountName}</span>
                     )}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-baseline">
-                  <span className="font-bold text-slate-600 uppercase text-[9px]">
+                  <span className="font-extrabold text-slate-900 uppercase text-[9px]">
                     Ref & Due (রেফারেন্স/মেয়াদ):
                   </span>
-                  <span className="font-semibold text-slate-900 text-[10px] font-mono">
+                  <span className="font-bold text-slate-950 text-[10.5px] font-mono">
                     Ref: {voucher.referenceNumber || 'N/A'}
                     {voucher.dueDate && (
-                      <span className="text-rose-700 font-bold ml-1.5">Due: {formatDate(voucher.dueDate)}</span>
+                      <span className="text-rose-700 font-extrabold ml-1.5">Due: {formatDate(voucher.dueDate)}</span>
                     )}
                   </span>
                 </div>
               </div>
 
               {/* 3. FORMAL PARTICULARS LEDGER TABLE */}
-              <div className="my-2">
-                <table className="w-full text-left border-collapse border border-slate-900 text-[10px]">
+              <div className="my-2.5">
+                <table className="w-full text-left border-collapse border-2 border-slate-900 text-[10.5px]">
                   <thead>
-                    <tr className="bg-slate-900 text-white font-bold uppercase text-[9px] tracking-wider">
-                      <th className="border border-slate-900 py-1 px-1.5 w-7 text-center font-mono">SL</th>
-                      <th className="border border-slate-900 py-1 px-2">Description & Particulars (বিবরণ)</th>
-                      <th className="border border-slate-900 py-1 px-2 w-28">Head / Category</th>
-                      <th className="border border-slate-900 py-1 px-2 w-24 text-right">Amount (BDT)</th>
+                    <tr className="bg-slate-900 text-white font-bold uppercase text-[9.5px] tracking-wider">
+                      <th className="border border-slate-900 py-1.5 px-2 w-8 text-center font-mono">SL</th>
+                      <th className="border border-slate-900 py-1.5 px-2.5">Description & Particulars (বিবরণ)</th>
+                      <th className="border border-slate-900 py-1.5 px-2.5 w-32">Head / Category</th>
+                      <th className="border border-slate-900 py-1.5 px-2.5 w-28 text-right">Amount (BDT)</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td className="border border-slate-900 py-1.5 px-1.5 text-center font-mono font-bold">01</td>
-                      <td className="border border-slate-900 py-1.5 px-2">
-                        <div className="font-bold text-slate-950 text-[11px] leading-tight">{voucher.description}</div>
+                      <td className="border border-slate-900 py-2 px-2 text-center font-mono font-bold">01</td>
+                      <td className="border border-slate-900 py-2 px-2.5">
+                        <div className="font-bold text-slate-950 text-[11.5px] leading-tight">{voucher.description}</div>
                         {voucher.notes && (
-                          <div className="text-[9px] text-slate-600 italic mt-0.5">Note: {voucher.notes}</div>
+                          <div className="text-[9.5px] text-slate-700 italic mt-0.5">Note: {voucher.notes}</div>
                         )}
                       </td>
-                      <td className="border border-slate-900 py-1.5 px-2 font-semibold text-slate-800">
+                      <td className="border border-slate-900 py-2 px-2.5 font-bold text-slate-900">
                         {voucher.categoryName}
                       </td>
-                      <td className="border border-slate-900 py-1.5 px-2 text-right font-mono font-extrabold text-slate-950 text-[11px]">
+                      <td className="border border-slate-900 py-2 px-2.5 text-right font-mono font-black text-slate-950 text-[12px]">
                         ৳ {voucher.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
 
                     {voucher.fee && voucher.fee > 0 ? (
                       <tr>
-                        <td className="border border-slate-900 py-1 px-1.5 text-center font-mono">02</td>
-                        <td className="border border-slate-900 py-1 px-2 font-medium text-slate-700">
+                        <td className="border border-slate-900 py-1.5 px-2 text-center font-mono">02</td>
+                        <td className="border border-slate-900 py-1.5 px-2.5 font-semibold text-slate-800">
                           Transaction Fee / Service Charge
                         </td>
-                        <td className="border border-slate-900 py-1 px-2 text-slate-600">Service Charge</td>
-                        <td className="border border-slate-900 py-1 px-2 text-right font-mono font-bold text-slate-900">
+                        <td className="border border-slate-900 py-1.5 px-2.5 text-slate-800 font-medium">Service Charge</td>
+                        <td className="border border-slate-900 py-1.5 px-2.5 text-right font-mono font-bold text-slate-950">
                           ৳ {voucher.fee.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </td>
                       </tr>
                     ) : null}
 
                     {/* NET TOTAL ROW */}
-                    <tr className="bg-slate-100 font-black border-t-2 border-slate-900 text-[11px]">
-                      <td colSpan={3} className="border border-slate-900 py-1 px-2 text-right uppercase tracking-wider text-slate-900">
+                    <tr className="bg-slate-100 font-black border-t-2 border-slate-900 text-[11.5px]">
+                      <td colSpan={3} className="border border-slate-900 py-1.5 px-2.5 text-right uppercase tracking-wider text-slate-950 font-black">
                         Net Total Amount (সর্বমোট টাকা):
                       </td>
-                      <td className="border border-slate-900 py-1 px-2 text-right font-mono font-black text-slate-950 text-xs">
+                      <td className="border border-slate-900 py-1.5 px-2.5 text-right font-mono font-black text-slate-950 text-[12.5px]">
                         ৳ {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -382,9 +382,9 @@ export const VoucherModal: React.FC<VoucherModalProps> = ({
                 </table>
 
                 {/* AMOUNT IN WORDS */}
-                <div className="mt-1.5 p-1.5 bg-slate-50 border border-slate-300 rounded text-[10px] flex items-center justify-between">
-                  <span className="font-bold text-slate-600 uppercase text-[8.5px] shrink-0">In Words:</span>
-                  <span className="font-bold text-slate-950 italic font-serif text-[10.5px] truncate ml-2">
+                <div className="mt-2 p-2 bg-slate-50/90 border-2 border-slate-900 rounded text-[10.5px] flex items-center justify-between">
+                  <span className="font-extrabold text-slate-900 uppercase text-[9px] shrink-0">In Words:</span>
+                  <span className="font-bold text-slate-950 italic font-serif text-[11px] truncate ml-2">
                     {amountToWords(totalAmount)}
                   </span>
                 </div>
